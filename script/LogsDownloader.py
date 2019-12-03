@@ -108,6 +108,8 @@ class LogsDownloader:
         if self.config.SAVE_LOCALLY == "YES":
             if not os.path.exists(self.config.PROCESS_DIR):
                 os.makedirs(self.config.PROCESS_DIR)
+        # Setup TCP Syslog connection
+        self.syslog = loggerglue.emitter.TCPSyslogEmitter((self.config.SYSLOG_ADDRESS, int(self.config.SYSLOG_PORT)), False)
         self.logger.info("LogsDownloader initializing is done")
 
     """
@@ -257,8 +259,7 @@ class LogsDownloader:
         if self.config.SYSLOG_ENABLE == 'YES':
             for msg in decrypted_file.splitlines():
                 if msg != '':
-                    emit = loggerglue.emitter.UDPSyslogEmitter((self.config.SYSLOG_ADDRESS, int(self.config.SYSLOG_PORT)))
-                    emit.emit(msg)
+                    self.syslog.emit(msg)
         if self.config.SAVE_LOCALLY == "YES":
             local_file = open(self.config.PROCESS_DIR + filename, "a+")
             local_file.writelines(decrypted_file)
@@ -348,6 +349,7 @@ class LogsDownloader:
     def set_signal_handling(self, sig, frame):
         if sig == signal.SIGTERM:
             self.running = False
+            self.syslog.close()
             self.logger.info("Got a termination signal, will now shutdown and exit gracefully")
 
     """
